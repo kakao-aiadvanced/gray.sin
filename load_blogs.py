@@ -1,7 +1,10 @@
+from dotenv import load_dotenv
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
+
+load_dotenv() # .env 파일 로드
 
 urls = [
     "https://lilianweng.github.io/posts/2023-06-23-agent/",
