@@ -48,6 +48,34 @@ Output your answer in JSON format, using the following structure: {{"answer": "Y
 # 답변 생성 체인
 answer_generation_chain = answer_generation_prompt | llm | parser
 
+# 3. Hallucination 평가 PromptTemplate 정의
+hallucination_prompt = PromptTemplate(
+    template="""You are an expert in evaluating whether an AI-generated answer contains hallucinations.
+Your task is to determine if the generated answer is faithful to the provided context and does not contain any information that is not supported by the context.
+
+A hallucination occurs when:
+1. The answer contains information that is not present in the provided context
+2. The answer contradicts information in the context
+3. The answer makes up facts, numbers, or details not found in the context
+4. The answer draws conclusions that go beyond what the context supports
+
+Evaluate the generated answer against the provided context and determine if there are any hallucinations.
+Output your answer in JSON format, using the following structure:
+{{"hallucination": "yes"}} if the answer contains hallucinations, or {{"hallucination": "no"}} if it does not.
+
+Context: {context}
+Generated Answer: {generated_answer}
+{format_instructions}
+""",
+    input_variables=["context", "generated_answer"],
+    partial_variables={
+        "format_instructions": parser.get_format_instructions()
+    },
+)
+
+# Hallucination 평가 체인
+hallucination_chain = hallucination_prompt | llm | parser
+
 def query_rag_system(user_query):
     """RAG 시스템으로 사용자 쿼리에 대한 답변을 생성하는 함수"""
     # retriever 초기화
@@ -95,6 +123,21 @@ def query_rag_system(user_query):
             "context": combined_context
         })
         print(f"생성된 답변: {answer_response}")
+        
+        # Hallucination 평가
+        print(f"\n--- Hallucination 평가 ---")
+        hallucination_result = hallucination_chain.invoke({
+            "context": combined_context,
+            "generated_answer": answer_response.get('answer', '')
+        })
+        print(f"Hallucination 평가 결과: {hallucination_result}")
+        
+        if hallucination_result.get('hallucination') == 'yes':
+            print("⚠️  경고: 생성된 답변에 Hallucination이 감지되었습니다!")
+            print("📝 답변을 신중하게 검토해주세요.")
+        else:
+            print("✅ Hallucination이 감지되지 않았습니다.")
+        
         return answer_response
     else:
         print("\n관련성 있는 문서가 없습니다.")
