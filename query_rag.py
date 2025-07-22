@@ -118,25 +118,54 @@ def query_rag_system(user_query):
         # 모든 관련 청크를 하나의 컨텍스트로 결합
         combined_context = "\n\n".join(relevant_chunks)
         
-        answer_response = answer_generation_chain.invoke({
-            "user_query": user_query,
-            "context": combined_context
-        })
-        print(f"생성된 답변: {answer_response}")
+        # 답변 생성 및 Hallucination 검증 (최대 2회 시도)
+        max_attempts = 2
+        attempt = 1
         
-        # Hallucination 평가
-        print(f"\n--- Hallucination 평가 ---")
-        hallucination_result = hallucination_chain.invoke({
-            "context": combined_context,
-            "generated_answer": answer_response.get('answer', '')
-        })
-        print(f"Hallucination 평가 결과: {hallucination_result}")
+        while attempt <= max_attempts:
+            print(f"\n--- 답변 생성 (시도 {attempt}/{max_attempts}) ---")
+            answer_response = answer_generation_chain.invoke({
+                "user_query": user_query,
+                "context": combined_context
+            })
+            print(f"생성된 답변: {answer_response}")
+            
+            # Hallucination 평가
+            print(f"\n--- Hallucination 평가 (시도 {attempt}) ---")
+            hallucination_result = hallucination_chain.invoke({
+                "context": combined_context,
+                "generated_answer": answer_response.get('answer', '')
+            })
+            print(f"Hallucination 평가 결과: {hallucination_result}")
+            
+            if hallucination_result.get('hallucination') == 'no':
+                print("✅ Hallucination이 감지되지 않았습니다.")
+                break
+            else:
+                print("⚠️  경고: 생성된 답변에 Hallucination이 감지되었습니다!")
+                if attempt < max_attempts:
+                    print("🔄 답변을 재생성합니다...")
+                    attempt += 1
+                else:
+                    print("📝 최대 시도 횟수 도달. 현재 답변을 제공합니다.")
+                    break
         
-        if hallucination_result.get('hallucination') == 'yes':
-            print("⚠️  경고: 생성된 답변에 Hallucination이 감지되었습니다!")
-            print("📝 답변을 신중하게 검토해주세요.")
-        else:
-            print("✅ Hallucination이 감지되지 않았습니다.")
+        # 최종 답변과 출처 정보 제공
+        print(f"\n--- 최종 답변 및 출처 ---")
+        print(f"답변: {answer_response.get('answer', '')}")
+        
+        # 출처 정보 추출 및 표시
+        print(f"\n📚 출처 정보:")
+        for i, doc in enumerate([doc for doc in retrieved_docs if doc.page_content in relevant_chunks]):
+            source_info = f"출처 {i+1}: "
+            if hasattr(doc, 'metadata') and doc.metadata:
+                if 'source' in doc.metadata:
+                    source_info += f"{doc.metadata['source']}"
+                if 'title' in doc.metadata:
+                    source_info += f" - {doc.metadata['title']}"
+            else:
+                source_info += f"문서 내용: {doc.page_content[:100]}..."
+            print(source_info)
         
         return answer_response
     else:
@@ -145,18 +174,13 @@ def query_rag_system(user_query):
 
 # 샘플 실행
 if __name__ == "__main__":
-    # 샘플 쿼리들 (관련성 있는 것과 없는 것 모두 포함)
+    # 테스트용 샘플 쿼리들 (관련성 있는 것과 없는 것 포함)
     sample_queries = [
-        # AI/ML 관련 (관련성 있음)
+        # AI/ML 관련 (관련성 있음) - 출처 정보와 재시도 로직 테스트
         "What is prompt engineering?",
-        "How do AI agents work?",
-        "What are adversarial attacks on LLMs?",
         
-        # 완전히 다른 주제들 (관련성 없음)
-        "What is the capital of France?",
-        "How to cook pasta?",
-        "What are the basic guitar chords?",
-        "How to calculate compound interest?"
+        # 완전히 다른 주제 (관련성 없음) - 관련성 필터링 테스트
+        "What is the capital of France?"
     ]
     
     for query in sample_queries:
