@@ -10,8 +10,8 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # JsonOutputParser 초기화
 parser = JsonOutputParser()
 
-# PromptTemplate 정의 (관련성 평가용)
-prompt = PromptTemplate(
+# 1. 관련성 평가 PromptTemplate 정의
+relevance_prompt = PromptTemplate(
     template="""You are an expert in evaluating the relevance between a user query and a retrieved document chunk.
 Your task is to determine if the retrieved chunk is relevant to the user's query.
 Output your answer in JSON format, using the following structure:
@@ -27,22 +27,62 @@ Retrieved Chunk: {retrieved_chunk}
     },
 )
 
-# 체인 구성 (관련성 평가용)
-relevance_chain = prompt | llm | parser
+# 관련성 평가 체인
+relevance_chain = relevance_prompt | llm | parser
+
+# 2. 답변 생성 PromptTemplate 정의
+answer_generation_prompt = PromptTemplate(
+    template="""Answer the user query based on the provided context.
+If the context does not contain enough information to answer the query, state that you cannot answer based on the provided context.
+Context: {context}
+User Query: {user_query}
+Output your answer in JSON format, using the following structure: {{"answer": "Your answer here"}}.
+{format_instructions}
+""",
+    input_variables=["user_query", "context"],
+    partial_variables={
+        "format_instructions": parser.get_format_instructions()
+    },
+)
+
+# 답변 생성 체인
+answer_generation_chain = answer_generation_prompt | llm | parser
 
 # 샘플 쿼리 및 청크 정의
 sample_user_query = "What is prompt engineering?"
 sample_retrieved_chunk_relevant = "Prompt engineering is a discipline that focuses on developing and optimizing prompts to efficiently use language models for a wide range of applications and research topics."
 sample_retrieved_chunk_irrelevant = "The capital of France is Paris."
 
-# 관련성 평가 실행
 print(f"Evaluating relevance for User Query: {sample_user_query}")
-print(f"Retrieved Chunk (Relevant): {sample_retrieved_chunk_relevant}")
-response_relevant = relevance_chain.invoke({"user_query": sample_user_query, "retrieved_chunk": sample_retrieved_chunk_relevant})
-print(f"Relevance Result (Relevant): {response_relevant}")
 
-print("\n") # 줄바꿈 추가
+# 관련성 평가 및 답변 생성 (관련 있는 청크)
+print(f"\n--- Relevant Chunk Test ---")
+print(f"Retrieved Chunk: {sample_retrieved_chunk_relevant}")
+relevance_result_relevant = relevance_chain.invoke({"user_query": sample_user_query, "retrieved_chunk": sample_retrieved_chunk_relevant})
+print(f"Relevance Result: {relevance_result_relevant}")
 
-print(f"Retrieved Chunk (Irrelevant): {sample_retrieved_chunk_irrelevant}")
-response_irrelevant = relevance_chain.invoke({"user_query": sample_user_query, "retrieved_chunk": sample_retrieved_chunk_irrelevant})
-print(f"Relevance Result (Irrelevant): {response_irrelevant}")
+if relevance_result_relevant.get('relevance') == 'yes':
+    print("-> Chunk is relevant. Generating answer...")
+    answer_response = answer_generation_chain.invoke({
+        "user_query": sample_user_query,
+        "context": sample_retrieved_chunk_relevant
+    })
+    print(f"Generated Answer: {answer_response}")
+else:
+    print("-> Chunk is not relevant. Skipping answer generation.")
+
+# 관련성 평가 및 답변 생성 (관련 없는 청크)
+print(f"\n--- Irrelevant Chunk Test ---")
+print(f"Retrieved Chunk: {sample_retrieved_chunk_irrelevant}")
+relevance_result_irrelevant = relevance_chain.invoke({"user_query": sample_user_query, "retrieved_chunk": sample_retrieved_chunk_irrelevant})
+print(f"Relevance Result: {relevance_result_irrelevant}")
+
+if relevance_result_irrelevant.get('relevance') == 'yes':
+    print("-> Chunk is relevant. Generating answer...")
+    answer_response = answer_generation_chain.invoke({
+        "user_query": sample_user_query,
+        "context": sample_retrieved_chunk_irrelevant
+    })
+    print(f"Generated Answer: {answer_response}")
+else:
+    print("-> Chunk is not relevant. Skipping answer generation.")
