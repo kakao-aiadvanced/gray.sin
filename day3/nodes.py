@@ -200,18 +200,13 @@ def decide_to_generate(state):
     question = state["question"]
     documents = state["documents"]
     
-    # LLM을 사용해서 question과 documents의 연관성 평가
-    score = generate_decision_grader.invoke(
-        {"question": question, "documents": documents}
-    )
-    decision = score["score"]
-    
-    if decision.lower() == "yes":
-        print("---DECISION: DOCUMENTS ARE SUFFICIENT FOR GENERATION---")
-        return "yes"
-    else:
-        print("---DECISION: DOCUMENTS ARE INSUFFICIENT, NEED WEB SEARCH---")
+    # documents가 비어있으면 no, 있으면 yes를 반환한다.
+    if len(documents) == 0:
+        print("---DECISION: NO DOCUMENTS FOUND, INCLUDE WEB SEARCH---")
         return "no"
+    else:
+        print("---DECISION: DOCUMENTS FOUND, NO WEB SEARCH---")
+        return "yes"
 
 def grade_generation_v_documents_and_question(state):
     """
