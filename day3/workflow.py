@@ -31,7 +31,7 @@ def create_workflow():
     workflow.add_node("websearch", web_search)  # web search
     workflow.add_node("grade_documents", grade_documents)  # grade documents
     workflow.add_node("generate", generate)  # generate
-    workflow.add_node("grade_generation", grade_generation)  # grade generation v documents and question
+    workflow.add_node("grade_generation", grade_generation_v_documents_and_question)  # grade generation v documents and question
 
     # Build graph
     workflow.set_entry_point("retrieve")
@@ -45,7 +45,6 @@ def create_workflow():
         },
     )
     workflow.add_edge("websearch", "grade_documents")
-    # TODO 최대 1회 로직 추가
 
     workflow.add_edge("generate", "grade_generation")
     workflow.add_conditional_edges(

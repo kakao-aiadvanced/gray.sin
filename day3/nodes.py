@@ -1,5 +1,5 @@
 from models import tavily_client
-from graders import retrieval_grader, rag_chain, hallucination_grader, answer_grader
+from graders import retrieval_grader, rag_chain, hallucination_grader, answer_grader, generate_decision_grader
 
 def web_search(state):
     """
@@ -184,28 +184,30 @@ def route_question(state):
 
 def decide_to_generate(state):
     """
-    Determines whether to generate an answer, or add web search
+    Determines whether to generate an answer using LLM evaluation of question-document relevance
 
     Args:
         state (dict): The current graph state
 
     Returns:
-        str: Binary decision for next node to call
+        str: Binary decision "yes" or "no"
     """
-    print("---ASSESS GRADED DOCUMENTS---")
-    state["question"]
-    web_search = state["web_search"]
-    state["documents"]
-
-    if web_search == "Yes":
-        # All documents have been filtered check_relevance
-        # We will re-generate a new query
-        print("---DECISION: ALL DOCUMENTS ARE NOT RELEVANT TO QUESTION, INCLUDE WEB SEARCH---")
-        return "websearch"
+    print("---ASSESS DOCUMENTS FOR GENERATION---")
+    question = state["question"]
+    documents = state["documents"]
+    
+    # LLM을 사용해서 question과 documents의 연관성 평가
+    score = generate_decision_grader.invoke(
+        {"question": question, "documents": documents}
+    )
+    decision = score["score"]
+    
+    if decision.lower() == "yes":
+        print("---DECISION: DOCUMENTS ARE SUFFICIENT FOR GENERATION---")
+        return "yes"
     else:
-        # We have relevant documents, so generate answer
-        print("---DECISION: GENERATE---")
-        return "generate"
+        print("---DECISION: DOCUMENTS ARE INSUFFICIENT, NEED WEB SEARCH---")
+        return "no"
 
 def grade_generation_v_documents_and_question(state):
     """

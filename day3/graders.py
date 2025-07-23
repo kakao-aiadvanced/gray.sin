@@ -65,4 +65,20 @@ answer_prompt = ChatPromptTemplate.from_messages([
     ("human", "question: {question}\n\n answer: {generation} "),
 ])
 
-answer_grader = answer_prompt | llm | JsonOutputParser() 
+answer_grader = answer_prompt | llm | JsonOutputParser()
+
+# 문서 생성 결정 평가기
+generate_decision_system = """You are a grader assessing whether the retrieved documents
+contain sufficient information to generate a meaningful answer to the user question. 
+Evaluate if the documents are relevant and contain enough content to answer the question.
+Give a binary score 'yes' or 'no' to indicate whether answer generation should proceed.
+'yes' means the documents are sufficient to generate an answer.
+'no' means the documents are insufficient and web search should be performed instead.
+Provide the binary score as a JSON with a single key 'score' and no preamble or explanation."""
+
+generate_decision_prompt = ChatPromptTemplate.from_messages([
+    ("system", generate_decision_system),
+    ("human", "question: {question}\n\n documents: {documents} "),
+])
+
+generate_decision_grader = generate_decision_prompt | llm | JsonOutputParser() 
