@@ -47,7 +47,7 @@ def main():
     print("\n=== Full Workflow Execution ===")
     app = create_workflow()
     
-    inputs = {"question": "What is prompt?"}
+    inputs = {"question": "세계에서 3대 중량이 가장 높은 사람은 누구인가? (벤치프레스, 스쿼트, 데드리프트)"}
     final_state = None
     for output in app.stream(inputs):
         for key, value in output.items():

@@ -137,7 +137,8 @@ def grade_documents(state):
     documents = state["documents"]
     relevanceCheckCount = state.get("relevanceCheckCount", 0)
 
-    if relevanceCheckCount >= 1:
+    # 웹 검색 후 최대 2번까지 관련성 검사를 허용 (벡터 검색 1번 + 웹 검색 후 1번)
+    if relevanceCheckCount >= 2:
         print("---DECISION: MAX RELEVANCE CHECK COUNT REACHED, INCLUDE WEB SEARCH---")
         raise Exception("failed: not relevant")
 
@@ -225,9 +226,10 @@ def grade_generation_v_documents_and_question(state):
     hasHallucination = state.get("hasHallucination", False)
     hallucinationCheckCount = state.get("hallucinationCheckCount", 0)
 
-    if hallucinationCheckCount >= 1:
+    # 할루시네이션 체크를 최대 2번까지 허용
+    if hallucinationCheckCount >= 2:
         print("---DECISION: MAX HALLUCINATION CHECK COUNT REACHED, INCLUDE WEB SEARCH---")
-        raise Exception("failed: not relevant")
+        raise Exception("failed: not hallucination")
 
     score = hallucination_grader.invoke(
         {"documents": documents, "generation": generation}
