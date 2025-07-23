@@ -135,10 +135,14 @@ def grade_documents(state):
     print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
     question = state["question"]
     documents = state["documents"]
+    relevanceCheckCount = state.get("relevanceCheckCount", 0)
+
+    if relevanceCheckCount >= 1:
+        print("---DECISION: MAX RELEVANCE CHECK COUNT REACHED, INCLUDE WEB SEARCH---")
+        raise Exception("failed: not relevant")
 
     # Score each doc
     filtered_docs = []
-    web_search = "No"
     for d in documents:
         score = retrieval_grader.invoke(
             {"question": question, "document": d.page_content}
@@ -153,9 +157,9 @@ def grade_documents(state):
             print("---GRADE: DOCUMENT NOT RELEVANT---")
             # We do not include the document in filtered_docs
             # We set a flag to indicate that we want to run web search
-            web_search = "Yes"
             continue
-    return {"documents": filtered_docs, "question": question, "web_search": web_search}
+
+    return {"documents": filtered_docs, "question": question, "relevanceCheckCount": relevanceCheckCount + 1}
 
 def route_question(state):
     """
