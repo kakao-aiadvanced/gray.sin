@@ -14,13 +14,13 @@ class GraphState(TypedDict):
     Attributes:
         question: question
         generation: LLM generation
-        web_search: whether to add search
         documents: list of documents
     """
     question: str
     generation: str
-    web_search: str
     documents: List[str]
+    relevanceCheckCount: int
+    hallucinationCheckCount: int
 
 def create_workflow():
     """RAG 워크플로우를 생성합니다."""
@@ -28,8 +28,8 @@ def create_workflow():
 
     # Define the nodes
     workflow.add_node("retrieve", retrieve)  # retrieve
-    workflow.add_node("websearch", web_search)  # web search
     workflow.add_node("grade_documents", grade_documents)  # grade documents
+    workflow.add_node("websearch", web_search)  # web search
     workflow.add_node("generate", generate)  # generate
     workflow.add_node("grade_generation", grade_generation_v_documents_and_question)  # grade generation v documents and question
 
@@ -49,7 +49,7 @@ def create_workflow():
     workflow.add_edge("generate", "grade_generation")
     workflow.add_conditional_edges(
         "grade_generation",
-        grade_generation_v_documents_and_question,
+        decide_to_generate, # FIXME
         {
             "yes": END,
             "no": "generate",
