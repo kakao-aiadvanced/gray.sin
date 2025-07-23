@@ -237,10 +237,22 @@ def grade_generation_v_documents_and_question(state):
     # Check hallucination
     if grade == "yes":
         print("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")
-        return {"hasHallucination": False, "hallucinationCheckCount": hallucinationCheckCount}
+        return {
+            "question": question,
+            "documents": documents,
+            "generation": generation,
+            "hasHallucination": False, 
+            "hallucinationCheckCount": hallucinationCheckCount
+        }
     else:
         print("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRY---")
-        return {"hasHallucination": True, "hallucinationCheckCount": hallucinationCheckCount + 1}
+        return {
+            "question": question,
+            "documents": documents,
+            "generation": generation,
+            "hasHallucination": True, 
+            "hallucinationCheckCount": hallucinationCheckCount + 1
+        }
 
 def decide_to_print(state):
     """

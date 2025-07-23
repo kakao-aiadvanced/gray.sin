@@ -48,10 +48,19 @@ def main():
     app = create_workflow()
     
     inputs = {"question": "What is prompt?"}
+    final_state = None
     for output in app.stream(inputs):
         for key, value in output.items():
             pprint(f"Finished running: {key}:")
-    pprint(value["generation"])
+            final_state = value
+    
+    # 최종 결과 출력
+    if final_state and "generation" in final_state:
+        print("\n=== Final Answer ===")
+        print(final_state["generation"])
+    else:
+        print("\n=== Final State ===")
+        pprint(final_state)
 
 if __name__ == "__main__":
     main() 
