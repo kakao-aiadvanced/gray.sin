@@ -222,6 +222,12 @@ def grade_generation_v_documents_and_question(state):
     question = state["question"]
     documents = state["documents"]
     generation = state["generation"]
+    hasHallucination = state.get("hasHallucination", False)
+    hallucinationCheckCount = state.get("hallucinationCheckCount", 0)
+
+    if hallucinationCheckCount >= 1:
+        print("---DECISION: MAX HALLUCINATION CHECK COUNT REACHED, INCLUDE WEB SEARCH---")
+        raise Exception("failed: not relevant")
 
     score = hallucination_grader.invoke(
         {"documents": documents, "generation": generation}
@@ -231,17 +237,21 @@ def grade_generation_v_documents_and_question(state):
     # Check hallucination
     if grade == "yes":
         print("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")
-        # Check question-answering
-        print("---GRADE GENERATION vs QUESTION---")
-        score = answer_grader.invoke({"question": question, "generation": generation})
-        grade = score["score"]
-        if grade == "yes":
-            print("---DECISION: GENERATION ADDRESSES QUESTION---")
-            return "useful"
-        else:
-            print("---DECISION: GENERATION DOES NOT ADDRESS QUESTION---")
-            return "not useful"
+        return {"hasHallucination": False, "hallucinationCheckCount": hallucinationCheckCount}
     else:
-        from pprint import pprint
-        pprint("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRY---")
-        return "not supported" 
+        print("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRY---")
+        return {"hasHallucination": True, "hallucinationCheckCount": hallucinationCheckCount + 1}
+
+def decide_to_print(state):
+    """
+    Determines whether to end the workflow
+    """
+    # hasHallucination이 True이면 출력하지 않고 다시 생성한다.
+    # hasHallucination이 False이면 출력한다.
+    hasHallucination = state.get("hasHallucination", False)
+    if hasHallucination:
+        print("---DECISION: HAS HALLUCINATION, RE-GENERATE---")
+        return "no"
+    else:
+        print("---DECISION: NO HALLUCINATION, PRINT ANSWER---")
+        return "yes"

@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 from langgraph.graph import END, StateGraph
 from nodes import (
     web_search, retrieve, grade_documents, generate,
-    route_question, decide_to_generate, grade_generation_v_documents_and_question
+    route_question, decide_to_generate, decide_to_print, grade_generation_v_documents_and_question
 )
 
 class GraphState(TypedDict):
@@ -21,6 +21,7 @@ class GraphState(TypedDict):
     documents: List[str]
     relevanceCheckCount: int
     hallucinationCheckCount: int
+    hasHallucination: bool
 
 def create_workflow():
     """RAG 워크플로우를 생성합니다."""
@@ -49,7 +50,7 @@ def create_workflow():
     workflow.add_edge("generate", "grade_generation")
     workflow.add_conditional_edges(
         "grade_generation",
-        decide_to_generate, # FIXME
+        decide_to_print,
         {
             "yes": END,
             "no": "generate",
