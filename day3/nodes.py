@@ -15,14 +15,30 @@ def web_search(state):
     question = state["question"]
     print({"question": question})
 
-    # Web search
-    response_context = tavily_client.get_search_context(
-        query=question, search_depth="advanced", max_tokens=500
+    # Web search - 구조화된 응답을 받아서 URL 정보 보존
+    response = tavily_client.search(
+        query=question, search_depth="advanced", max_results=3
     )
     
-    # Create document-like structure
+    # Create document-like structure with source information
     from langchain_core.documents import Document
-    docs = [Document(page_content=response_context)]
+    docs = []
+    
+    for result in response['results']:
+        doc = Document(
+            page_content=result['content'],
+            metadata={
+                'source': result['url'],
+                'title': result['title'],
+                'score': result['score'],
+                'source_type': 'web_search'
+            }
+        )
+        docs.append(doc)
+    
+    print(f"웹 검색 결과: {len(docs)}개 문서 찾음")
+    for doc in docs:
+        print(f"  - {doc.metadata['title']}: {doc.metadata['source']}")
     
     return {"documents": docs, "question": question}
 
@@ -45,8 +61,18 @@ def retrieve(state):
     
     # Retrieval
     documents = retriever.invoke(question)
-    print(question)
-    print(documents)
+    
+    # 벡터스토어 문서에 source_type 메타데이터 추가
+    for doc in documents:
+        if 'source_type' not in doc.metadata:
+            doc.metadata['source_type'] = 'vector_store'
+    
+    print(f"벡터 검색 결과: {len(documents)}개 문서 찾음")
+    for doc in documents:
+        source = doc.metadata.get('source', '알 수 없음')
+        title = doc.metadata.get('title', '제목 없음')
+        print(f"  - {title}: {source}")
+    
     return {"documents": documents, "question": question}
 
 def generate(state):
@@ -65,7 +91,35 @@ def generate(state):
 
     # RAG generation
     generation = rag_chain.invoke({"context": documents, "question": question})
-    return {"documents": documents, "question": question, "generation": generation}
+    
+    # 출처 정보 추가
+    sources = format_sources(documents)
+    
+    # 생성된 답변에 출처 정보 추가
+    full_response = f"{generation}\n\n📚 **출처:**\n" + "\n".join(sources)
+    
+    return {"documents": documents, "question": question, "generation": full_response}
+
+def format_sources(documents):
+    """문서들의 출처 정보를 포맷팅"""
+    sources = []
+    seen_sources = set()  # 중복 제거용
+    
+    for i, doc in enumerate(documents, 1):
+        source_url = doc.metadata.get('source', '')
+        title = doc.metadata.get('title', f'문서 {i}')
+        source_type = doc.metadata.get('source_type', '알 수 없음')
+        
+        # 중복 URL 제거
+        if source_url and source_url not in seen_sources:
+            seen_sources.add(source_url)
+            if source_type == 'web_search':
+                score = doc.metadata.get('score', 0)
+                sources.append(f"{len(sources)+1}. **{title}** (웹 검색, 신뢰도: {score:.2f})\n   🔗 {source_url}")
+            else:
+                sources.append(f"{len(sources)+1}. **{title}** (벡터 데이터베이스)\n   🔗 {source_url}")
+    
+    return sources
 
 def grade_documents(state):
     """
