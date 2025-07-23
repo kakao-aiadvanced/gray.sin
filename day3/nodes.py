@@ -40,8 +40,8 @@ def retrieve(state):
     question = state["question"]
 
     # Import retriever here to avoid circular imports
-    from document_loader import load_and_index_documents
-    retriever = load_and_index_documents()
+    from document_loader import load_existing_vectorstore
+    retriever = load_existing_vectorstore()
     
     # Retrieval
     documents = retriever.invoke(question)

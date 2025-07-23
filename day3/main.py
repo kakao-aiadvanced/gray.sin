@@ -1,6 +1,6 @@
 from pprint import pprint
 from models import llm, tavily_client
-from document_loader import load_and_index_documents
+from document_loader import create_vectorstore, load_existing_vectorstore
 from graders import question_router, retrieval_grader, rag_chain
 from workflow import create_workflow
 
@@ -28,7 +28,7 @@ def main():
     
     # 3. 문서 인덱싱 및 검색 테스트
     print("=== Document Indexing and Retrieval Test ===")
-    retriever = load_and_index_documents()
+    # retriever = create_vectorstore()
     
     # 4. 라우터 테스트
     question = "What is prompt?"
